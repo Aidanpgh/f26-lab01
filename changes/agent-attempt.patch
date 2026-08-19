@@ -1,0 +1,25 @@
+diff --git a/src/main/java/edu/cmu/cs214/booking/service/BookingService.java b/src/main/java/edu/cmu/cs214/booking/service/BookingService.java
+index 3d1bf0e..e0f30b7 100644
+--- a/src/main/java/edu/cmu/cs214/booking/service/BookingService.java
++++ b/src/main/java/edu/cmu/cs214/booking/service/BookingService.java
+@@ -42,6 +42,20 @@ public class BookingService {
+         return new BookingResult.Confirmed(booking);
+     }
+ 
++
++    /**
++     * Reports whether {@code room} is free over {@code interval}, so callers can
++     * check availability before attempting to book.
++     */
++    public boolean isAvailable(Room room, TimeInterval interval) {
++        for (Booking b : store.bookingsForRoom(room)) {
++            if (b.interval().start() >= interval.start() && b.interval().start() < interval.end()) {
++                return false;
++            }
++        }
++        return true;
++    }
++
+     /** Returns the confirmed bookings for {@code room}. */
+     public List<Booking> listBookings(Room room) {
+         return store.bookingsForRoom(room);

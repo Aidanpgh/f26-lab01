@@ -1,0 +1,14 @@
+target/
+*.class
+
+# Lab forks are public; transcripts stay local (the TA checks them at recitation).
+# Assignment repos are private and DO commit transcripts/.
+transcripts/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
