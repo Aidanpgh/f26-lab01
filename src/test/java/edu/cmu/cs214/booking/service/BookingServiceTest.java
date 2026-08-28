@@ -2,11 +2,15 @@ package edu.cmu.cs214.booking.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import edu.cmu.cs214.booking.domain.Booking;
 import edu.cmu.cs214.booking.domain.Room;
 import edu.cmu.cs214.booking.domain.TimeInterval;
 import edu.cmu.cs214.booking.domain.User;
+import edu.cmu.cs214.booking.repo.BookingStore;
 import edu.cmu.cs214.booking.repo.InMemoryBookingStore;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class BookingServiceTest {
@@ -57,5 +61,25 @@ class BookingServiceTest {
         svc.book(roomA, alice, new TimeInterval(600, 660));
         svc.book(roomA, bob, new TimeInterval(660, 720));
         assertEquals(2, svc.listBookings(roomA).size());
+    }
+
+    @Test
+    void waitlistedUserIsPromotedWhenBookingAheadIsCancelled() {
+    BookingStore store = new InMemoryBookingStore();   
+    BookingService svc = new BookingService(store);    
+
+    BookingResult r1 = svc.book(roomA, alice, new TimeInterval(600, 660));
+    BookingResult r2 = svc.book(roomA, bob, new TimeInterval(630, 700));
+    assertInstanceOf(BookingResult.Confirmed.class, r1);
+    assertInstanceOf(BookingResult.Waitlisted.class, r2);
+
+    String aliceBookingId = ((BookingResult.Confirmed) r1).booking().id();
+    svc.cancelBooking(aliceBookingId);
+
+    List<Booking> bookings = store.bookingsForRoom(roomA);
+    assertEquals(1, bookings.size());
+    assertEquals(bob, bookings.get(0).user());
+    assertEquals(new TimeInterval(630, 700), bookings.get(0).interval());
+    assertTrue(store.waitlistForRoom(roomA).isEmpty());
     }
 }

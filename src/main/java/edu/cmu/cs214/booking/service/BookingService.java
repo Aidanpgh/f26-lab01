@@ -6,7 +6,10 @@ import edu.cmu.cs214.booking.domain.TimeInterval;
 import edu.cmu.cs214.booking.domain.User;
 import edu.cmu.cs214.booking.domain.WaitlistEntry;
 import edu.cmu.cs214.booking.repo.BookingStore;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Coordinates bookings and the waitlist. Enforces the core invariant: a room
@@ -49,9 +52,39 @@ public class BookingService {
 
     /**
      * Cancels the confirmed booking with {@code bookingId}, freeing its slot. If
-     * no booking has that id, this does nothing.
+     * no booking has that id, this does nothing. After removing the booking, at
+     * most one waiting user for that room is promoted into a confirmed booking:
+     * the earliest waiter (by {@code seq}) whose interval no longer overlaps any
+     * remaining confirmed booking.
      */
     public void cancelBooking(String bookingId) {
+        Optional<Booking> cancelled = store.findBooking(bookingId);
+        if (cancelled.isEmpty()) {
+            return;
+        }
+        Room room = cancelled.get().room();
         store.removeBooking(bookingId);
+        promoteFromWaitlist(room);
+    }
+
+    /**
+     * Promotes the earliest-waiting user for {@code room} whose interval is free
+     * of every remaining confirmed booking, if any such waiter exists. Promotes
+     * at most one user.
+     */
+    private void promoteFromWaitlist(Room room) {
+        List<WaitlistEntry> waiters = new ArrayList<>(store.waitlistForRoom(room));
+        waiters.sort(Comparator.comparingInt(WaitlistEntry::seq));
+        for (WaitlistEntry waiter : waiters) {
+            boolean conflicts = store.bookingsForRoom(room).stream()
+                .anyMatch(b -> b.interval().overlaps(waiter.interval()));
+            if (!conflicts) {
+                Booking promoted =
+                    new Booking("b" + nextBookingSeq++, room, waiter.user(), waiter.interval());
+                store.addBooking(promoted);
+                store.removeWaitlistEntry(waiter.id());
+                return;
+            }
+        }
     }
 }
